@@ -156,6 +156,42 @@ m.spectrum_    # learned spectral density a_{j,k}, shape (d, K)
 
 Classification uses one-hot KRR with temperature-scaled `predict_proba`.
 
+## Interpretability — ARD
+
+The kernel is learned, so its parameters *are* the explanation. `SpectralInterpreter`
+reads feature importance and interactions straight off a fitted `MSSKM` or
+`VariationalMSSKM` — no surrogate, no permutation.
+
+```python
+from skm import MSSKM, SpectralInterpreter
+
+m = MSSKM(task="regression").fit(X_train, y_train)   # pass a DataFrame to keep names
+itp = SpectralInterpreter(m)
+
+itp.feature_importance()      # per-feature ARD importance (normalized, sums to 1)
+itp.ranking()                 # [(name, importance), ...] sorted
+print(itp.summary(top=10))    # importance + raw relevance s_j + spectral energy
+itp.interaction_matrix()      # d×d metric interaction ‖M_jj'‖ from the encoder
+
+itp.plot_importance(top=10)   # bar chart   (needs matplotlib)
+itp.plot_interactions()       # heatmap
+```
+
+Two ARD readings come directly from the spectral map:
+
+- **Relevance** `s_j` — the ARD inverse length scale. `s_j → 0` switches a feature off
+  (its embedding coordinate stops turning); a large `s_j` means the embedding turns
+  quickly with that feature.
+- **Importance** `I_j ∝ s_j² · Σ_h w_h Σ_k a²_{h,j,k} ω²_{h,j,k}` — the bank-weighted
+  mean-square sensitivity of the embedding to feature `j` (a derivative-based global
+  index). It combines the ARD scale with the spectral energy the model actually placed
+  on the feature; inputs are standardized internally, so the `I_j` are comparable.
+
+For `mix=True` the off-diagonal blocks of the learned metric `M = WᵀW` measure
+**metric interaction** between feature pairs (Prop. 2 in the paper); with `mix=False`
+the encoder is block-diagonal and the off-diagonal is structurally zero. The additive
+GAMs have no ARD scale — use their `shape_function(j)` instead.
+
 ## Status
 
 Smoke test (`python tests/test_smoke.py`, GPU), test-set numbers:

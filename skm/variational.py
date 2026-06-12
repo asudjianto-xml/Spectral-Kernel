@@ -125,6 +125,7 @@ class VariationalMSSKM:
 
     # ------------------------------------------------------------ fit
     def fit(self, X, y, X_val=None, y_val=None):
+        self.feature_names_in_ = list(X.columns) if hasattr(X, "columns") else None
         X = np.asarray(X, dtype=np.float64)
         y = np.asarray(y)
         if self.task_arg == "auto":

@@ -17,6 +17,8 @@ from .gam import SpectralGAM
 from .learned_gam import LearnedGAM
 from .model import MSSKM
 from .variational import VariationalMSSKM
+from .interpret import SpectralInterpreter, feature_importance
 
-__all__ = ["SpectralGAM", "LearnedGAM", "MSSKM", "VariationalMSSKM"]
+__all__ = ["SpectralGAM", "LearnedGAM", "MSSKM", "VariationalMSSKM",
+           "SpectralInterpreter", "feature_importance"]
 __version__ = "0.0.1"

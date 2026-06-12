@@ -12,7 +12,7 @@ from sklearn.datasets import fetch_california_housing, load_breast_cancer
 from sklearn.model_selection import train_test_split
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from skm import MSSKM, SpectralGAM, LearnedGAM
+from skm import MSSKM, SpectralGAM, LearnedGAM, SpectralInterpreter
 
 
 def test_learned_gam_regression_california():
@@ -93,6 +93,37 @@ def test_classification_breast_cancer():
     assert np.allclose(proba.sum(1), 1.0, atol=1e-5)
 
 
+def test_ard_interpreter_california():
+    import pandas as pd
+    X, y = fetch_california_housing(return_X_y=True, as_frame=True)
+    Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.2, random_state=0)
+    m = MSSKM(task="regression", H=2, K=8, epochs=80, patience=12, seed=0).fit(Xtr, ytr)
+    itp = SpectralInterpreter(m)
+
+    imp = itp.feature_importance()
+    assert imp.shape == (X.shape[1],), "one importance per feature"
+    assert abs(imp.sum() - 1.0) < 1e-6, "normalized importances sum to 1"
+    assert (imp >= 0).all(), "importances are nonnegative"
+    assert itp.feature_names == list(X.columns), "DataFrame names recovered"
+
+    Imat = itp.interaction_matrix()                                   # mix=True -> full
+    assert Imat.shape == (X.shape[1], X.shape[1])
+    off = SpectralInterpreter(
+        MSSKM(task="regression", mix=False, H=1, K=8, epochs=60, patience=10, seed=0).fit(Xtr, ytr)
+    ).interaction_matrix(zero_diagonal=True)
+    assert float(off.max()) == 0.0, "block-diagonal encoder has no metric interaction"
+
+    top = itp.ranking()[0][0]
+    print(f"[ard interpreter] top feature = {top!r}  importances sum = {imp.sum():.4f}")
+
+    # GAMs have no ARD front-end and must be rejected with a clear error
+    try:
+        SpectralInterpreter(SpectralGAM(seed=0).fit(Xtr.values, ytr.values))
+        raise AssertionError("expected TypeError for a GAM")
+    except TypeError:
+        pass
+
+
 if __name__ == "__main__":
     test_gam_regression_california()
     test_gam_classification_breast_cancer()
@@ -101,4 +132,5 @@ if __name__ == "__main__":
     test_multibank_breast_cancer()
     test_regression_california()
     test_classification_breast_cancer()
+    test_ard_interpreter_california()
     print("\nOK")
