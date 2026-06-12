@@ -54,7 +54,7 @@ from sklearn.datasets import make_moons
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, f1_score, brier_score_loss, log_loss
 
-from skm import SpectralGAM, LearnedGAM, MSSKM
+from skm import SpectralGAM, LearnedGAM, MSSKM, SpectralInterpreter
 from skm.variational import VariationalMSSKM
 from catboost import CatBoostClassifier
 
@@ -189,6 +189,42 @@ plt.tight_layout(); plt.show()
 """)
 
 md(r"""
+## ARD interpretability: importance and interaction
+
+Because the kernel is *learned*, its parameters are the explanation --- no surrogate, no
+permutation. `SpectralInterpreter` reads them off a fitted model. The **ARD relevance** $s_j$ is
+the inverse length scale of each feature; combined with the spectral energy the model places on it
+we get a normalized **importance** $I_j \propto s_j^2 \sum_h w_h \sum_k a^2_{h,j,k}\,\omega^2_{h,j,k}$,
+the mean-square sensitivity of the embedding to feature $j$. On `make_moons` both features are
+relevant --- neither importance collapses to zero --- though the vertical coordinate carries more
+of the boundary's sharp variation.
+
+The **interaction** is where the ladder shows itself. The off-diagonal of the encoder metric
+$M = W^\top W$ measures how strongly the model couples a pair of features. Mixing (rung 1) wraps
+the boundary obliquely around the moons --- so $x_1$ and $x_2$ are coupled, and the off-diagonal
+lights up. With mixing off (rung B, block-diagonal $W$) the coupling is *structurally* zero: the
+interaction that bends rung B's boundary is axis-aligned and lives entirely in the kernel, not in
+the metric.
+""")
+
+code(r"""
+itp1 = SpectralInterpreter(models["rung 1: MSSKM()\n(kernel + mixing)"], feature_names=["x1", "x2"])
+itpB = SpectralInterpreter(models["rung B: MSSKM(mix=False)\n(kernel, no mixing)"], feature_names=["x1", "x2"])
+print("rung 1 ARD importance:", dict(itp1.ranking()))
+
+fig, axes = plt.subplots(1, 3, figsize=(12, 3.4))
+itp1.plot_importance(ax=axes[0]); axes[0].set_title("rung 1: ARD importance")
+for ax, itp, name in [(axes[1], itp1, "rung 1: mixing"), (axes[2], itpB, "rung B: no mixing")]:
+    M = itp.interaction_matrix(zero_diagonal=False)
+    im = ax.imshow(M, cmap="magma", vmin=0, vmax=1)
+    ax.set_xticks([0, 1]); ax.set_yticks([0, 1])
+    ax.set_xticklabels(["x1", "x2"]); ax.set_yticklabels(["x1", "x2"])
+    ax.set_title(f"metric interaction\n({name})")
+    fig.colorbar(im, ax=ax, fraction=0.046)
+plt.tight_layout(); plt.show()
+""")
+
+md(r"""
 ## Knowing what it does not know: a predictive distribution
 
 Every model above returns a *point* probability. But on a small, noisy problem we also want to
@@ -266,7 +302,9 @@ md(r"""
 - **MS-SKM** draws a smooth boundary that follows the data geometry, where **CatBoost** draws an
   axis-aligned staircase --- two different inductive biases, visibly different.
 - The model stays **inspectable**: per-feature relevance and, in the additive rungs, the exact
-  per-feature shape functions.
+  per-feature shape functions. `SpectralInterpreter` reads **ARD importance** and the **metric
+  interaction** $W^\top W$ straight off the kernel --- mixing lights up the off-diagonal, and with
+  mixing off it is structurally zero.
 - The **variational** head turns the same kernel into a **predictive distribution**: a Bernoulli
   SVGP whose uncertainty surface is small over the data and grows in the gap and beyond it ---
   the model knows where it is guessing.

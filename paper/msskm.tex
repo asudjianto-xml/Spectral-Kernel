@@ -109,7 +109,11 @@ peaked ones.
 \item \emph{(Predictive distribution.)} A variational head (Sec.~\ref{sec:elbo}) that trains the
 same learned kernel by the ELBO of a sparse Gaussian process \citep{titsias2009,hensman2013},
 giving a calibrated Gaussian predictive distribution rather than a point.
-\item An open-source implementation, and an ablation ladder that isolates each effect on real
+\item \emph{(Interpretability.)} Because the kernel is learned, its parameters are the
+explanation: ARD relevance gives a per-feature importance and the encoder metric $W^\top W$ gives
+pairwise metric interactions, read directly off the fitted model with no surrogate
+(Sec.~\ref{sec:exp}).
+\item An open-source implementation and an ablation ladder that isolates each effect on real
 tabular data.
 \end{enumerate}
 
@@ -489,6 +493,31 @@ Bike-hourly (R$^2$)  & 1 & 0.943          & 0.942          & 0.944 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\paragraph{Interpretability from the learned kernel.} The kernel is learned, so its parameters
+are the explanation, read off with no surrogate or permutation (Figure~\ref{fig:interpret}). The
+ARD relevance $s_j$ is the inverse length scale of feature $j$; with the spectral energy the model
+places on that feature it gives the importance
+\begin{equation}
+I_j\ \propto\ s_j^2\sum_{h} w_h\sum_{k} a_{h,j,k}^2\,\omega_{h,j,k}^2,
+\label{eq:ardimp}
+\end{equation}
+the bank-weighted mean-square sensitivity of the embedding to $x_j$, a derivative-based global
+index comparable across features because the inputs are standardized. On California the importance
+concentrates on the geographic coordinates, whose effect on price is sharp and local; a strong but
+smooth feature such as median income carries high relevance yet low gradient energy. The
+off-diagonal blocks of the encoder metric $M=W^\top W$ (Prop.~\ref{prop:interaction}) expose which
+pairs the model couples --- here the household-structure features (average occupancy with average
+bedrooms and rooms) and the latitude--longitude pair. This is the metric interaction of
+Prop.~\ref{prop:interaction} made visible; with $W$ block-diagonal (rung~B) it is identically zero.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\textwidth]{figures/interpret.pdf}
+\caption{ARD interpretability on California Housing, read directly from the fitted kernel
+($H{=}4$, $K{=}8$). Left: per-feature importance $I_j$ of \eqref{eq:ardimp}. Right: metric
+interaction $\|M_{jj'}\|_F$ between feature pairs, diagonal removed.}
+\label{fig:interpret}
+\end{figure}
 
 \section{Related work}
 Spectral-mixture \citep{wilson2013}, sparse-spectrum \citep{lazarogredilla2010} and \`a-la-carte
