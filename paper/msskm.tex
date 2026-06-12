@@ -29,26 +29,20 @@
 
 \begin{abstract}
 We treat supervised learning as the construction of a kernel: once a positive-semidefinite
-kernel is fixed the estimator is determined, so learning is the choice of a data-adapted
-kernel. We develop the Multi-Scale Spectral Kernel Machine (MS-SKM), a structured and
-inspectable kernel for tabular data, and we build it as a ladder in which each rung lifts
-exactly one modeling restriction. The base rung is a generalized additive model from fixed
-random Fourier features. Learning the frequencies keeps the model additive. Adding a radial
-base kernel on the spectral embedding turns interactions on; we show these interactions come
-from the kernel nonlinearity, not from feature mixing, and that a linear mixer can neither
-create nor remove them---it only rotates them from axis-aligned to oblique. The top rung
-partitions frequencies into multi-resolution banks, each with its own bandwidth, convex-fused
-on the simplex. We prove the fused kernel is positive-semidefinite and that its fit decomposes
-into one component per bank in the sum reproducing-kernel Hilbert space; we show that a single
-linear mixer over banks is identical to one bank with the pooled frequencies, so the convex
-fuse is the only construction that keeps the per-bank bandwidth, which is what makes multiple
-banks more than more frequencies. A capacity accounting predicts, and a sweep confirms, that
-the per-band frequency count is the overfitting axis while the number of banks is the
-multi-scale axis. The ladder isolates each effect on real data: on California Housing almost
-all of the gain over the additive model is the kernel and axis-aligned, on Breast Cancer it is
-the oblique mixing, and multiple banks help only where multi-scale structure exists. A
-variational head trains the same kernel by the ELBO of a sparse Gaussian process, so the model
-also returns a calibrated predictive distribution.
+kernel is fixed, kernel ridge regression determines the estimator, so learning is the choice
+of a data-adapted kernel. We develop the Multi-Scale Spectral Kernel Machine (MS-SKM), a
+structured, inspectable kernel for tabular data, and study it as a ladder in which each rung
+lifts one modeling restriction: from an additive model on fixed random Fourier features, to
+learned frequencies, to a radial kernel on a per-coordinate spectral embedding, to feature
+mixing, to multi-resolution banks fused on the simplex. Three results organize the design.
+Interactions come from the kernel nonlinearity, not the linear mixer, which only rotates them
+from axis-aligned to oblique. The convex multi-bank fuse is positive-semidefinite and
+decomposes into one component per bank, whereas a linear mixer over banks collapses to a single
+bank with the pooled frequencies---so the per-bank bandwidth is what fusion adds. A parameter
+accounting makes the per-band frequency count the overfitting axis and the bank count the
+multi-scale axis. The ladder isolates each effect on real data, and a variational head trains
+the same kernel by a sparse Gaussian-process ELBO to return a calibrated predictive
+distribution.
 \end{abstract}
 
 \section{Introduction}
@@ -63,10 +57,10 @@ alternative.
 
 Learnable spectral kernels are not new: spectral-mixture kernels model a spectral density
 \citep{wilson2013}, sparse-spectrum Gaussian processes learn finite spectral atoms
-\citep{lazarogredilla2010}, and \`a-la-carte kernels learn groups of fast frequencies
-\citep{yang2015}. Our contribution is an \emph{arrangement} of decisions into a tabular
-inductive bias, and a \emph{ladder} that makes the contribution of each decision measurable.
-Each rung lifts one restriction:
+\citep{lazarogredilla2010} and \`a-la-carte kernels learn groups of fast frequencies
+\citep{yang2015}. Our contribution is an \emph{arrangement} of these decisions into a tabular
+inductive bias and a \emph{ladder} that makes each decision's contribution measurable. Each
+rung lifts one restriction:
 \begin{enumerate}\itemsep1pt
 \item \textbf{Rung 0 --- fixed-frequency additive model.} Per-coordinate random Fourier
 features with a linear readout. The frequencies are fixed, the model is additive, there is no
@@ -81,9 +75,9 @@ interactions.
 each with its own bandwidth, convex-fused on the simplex.
 \end{enumerate}
 The ladder is the methodological point. A single accuracy number hides whether a model needs
-interactions at all, and if so whether they are axis-aligned or oblique, and whether it needs
-multiple scales or only more frequencies. Lifting one restriction at a time answers each
-question separately, on the same data and the same training machinery.
+interactions at all, whether they are axis-aligned or oblique and whether it needs multiple
+scales or only more frequencies. Lifting one restriction at a time answers each question
+separately, on the same data and the same training machinery.
 
 \paragraph{Contributions.} We are explicit about what is \emph{proven}, what is a
 \emph{diagnostic}, and what is a \emph{conjecture supported by a sweep}.
@@ -154,8 +148,10 @@ The inner product of \eqref{eq:psi} is the additive kernel
 \label{eq:additive}
 \end{equation}
 where each $\kappa_j$ is a one-dimensional stationary kernel with atomic spectral measure
-$\mu_j=\sum_k a_{j,k}^2(\delta_{+s_j\omega_{j,k}}+\delta_{-s_j\omega_{j,k}})/2$. Hence $\psi$
-realizes a sum of per-coordinate spectral-mixture kernels and is PSD. As $K\to\infty$ with
+\begin{equation*}
+\mu_j=\tfrac12\sum_k a_{j,k}^2\big(\delta_{s_j\omega_{j,k}}+\delta_{-s_j\omega_{j,k}}\big).
+\end{equation*}
+Hence $\psi$ realizes a sum of per-coordinate spectral-mixture kernels and is PSD. As $K\to\infty$ with
 $\{a_{j,k}^2\}$ a consistent quadrature of a density $p_j$, each $\kappa_j$ converges to the
 kernel of $p_j$, so the family is dense in the additive-stationary class
 \citep{wilson2013,duvenaud2011}.
@@ -355,10 +351,9 @@ is Gaussian, $\mathcal N(\mu^\star,\,s^{\star2}+\sigma^2)$, so every prediction 
 The intervals are calibrated. On California Housing the $90\%$ and $95\%$ central predictive
 intervals cover $0.93$ and $0.95$ of held-out points; on a one-dimensional series with a held-out
 gap the predictive standard deviation grows from in-sample through the gap to extrapolation, the
-expected Gaussian-process behavior. The variational head trades a little accuracy for the
-distribution --- its sparse $M$-point approximation reaches $R^2\approx0.84$ against the exact
-decode's $0.88$, the standard inducing-point tradeoff --- and the same bound is the route to a
-Bernoulli or softmax likelihood for classification, left for future work.
+expected Gaussian-process behavior. The sparse $M$-point head reaches $R^2\approx0.84$ where the
+exact decode reaches $0.88$. The same bound extends to a Bernoulli or softmax likelihood for
+classification.
 
 \section{Experiments}\label{sec:exp}
 We use California Housing (regression, $n{=}20{,}640$, $d{=}8$) and Breast Cancer (binary,
@@ -372,11 +367,11 @@ $d_\phi=128$.
 CatBoost on \texttt{make\_moons}, two interleaving crescents whose separation needs an oblique
 interaction. The additive rungs (0, A) draw blocky, near-separable boundaries; the boundary
 curves the moment the kernel appears (rung B), feature mixing (rung 1) wraps it obliquely around
-both crescents, and CatBoost draws an axis-aligned staircase. Accuracy sits at the noise floor,
-so the metrics (Table~\ref{tab:moons}) read through the boundary: AUC saturates, but the kernel
-rungs win on F1 and the Brier score, and CatBoost --- comparable on AUC --- has markedly worse
-Brier and log loss, the signature of an accurate ranker whose probabilities are overconfident.
-The variational head (Sec.~\ref{sec:elbo}) turns the same kernel into a predictive distribution
+both crescents and CatBoost draws an axis-aligned staircase. Accuracy sits at the noise floor, so
+the metrics (Table~\ref{tab:moons}) read through the boundary: AUC saturates, the kernel rungs win
+on F1 and Brier, and CatBoost --- comparable on AUC --- has markedly worse Brier and log loss, the
+signature of an accurate ranker with overconfident probabilities. The variational head
+(Sec.~\ref{sec:elbo}) turns the same kernel into a predictive distribution
 (Figure~\ref{fig:moons-unc}): the predictive standard deviation is low over the data-covered
 crescents and rises in the empty regions, the epistemic uncertainty of a Gaussian process.
 
@@ -506,14 +501,13 @@ reading. Convex kernel fusion has the exact decomposition and oracle guarantees 
 
 \section{Discussion}
 The ladder turns one model into a sequence of controlled questions. Interactions come from the
-kernel, not the mixer; the mixer only rotates them. Multiple banks are more than more frequencies
-only because the convex fuse keeps a bandwidth per scale; a linear mixer over banks is one wider
-bank. The per-band frequency count is the overfitting axis and the bank count is the multi-scale
-axis. These are not asymptotic claims but statements we can read off real data by lifting one
-restriction at a time. The open directions are a broader multi-seed benchmark against gradient
-boosting, selecting the fusion weights by an unbiased risk estimate to inherit the oracle
-guarantee, and a low-rank input projection before the per-coordinate map for genuinely
-multivariate frequencies.
+kernel, not the mixer; the mixer only rotates them. Multiple banks beat more frequencies only
+because the convex fuse keeps a bandwidth per scale; a linear mixer over banks is one wider bank.
+The per-band frequency count is the overfitting axis and the bank count the multi-scale axis.
+These are not asymptotic claims but statements read off real data by lifting one restriction at a
+time. Three directions remain: a broader multi-seed benchmark against gradient boosting, fusion
+weights chosen by an unbiased risk estimate to inherit the oracle guarantee and a low-rank input
+projection before the per-coordinate map for genuinely multivariate frequencies.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
