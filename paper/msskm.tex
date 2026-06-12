@@ -110,7 +110,7 @@ peaked ones.
 same learned kernel by the ELBO of a sparse Gaussian process \citep{titsias2009,hensman2013},
 giving a calibrated Gaussian predictive distribution rather than a point.
 \item \emph{(Interpretability.)} Because the kernel is learned, its parameters are the
-explanation: ARD relevance gives a per-feature importance and the encoder metric $W^\top W$ gives
+explanation: automatic relevance determination (ARD) gives a per-feature importance and the encoder metric $W^\top W$ gives
 pairwise metric interactions, read directly off the fitted model with no surrogate
 (Sec.~\ref{sec:exp}).
 \item An open-source implementation and an ablation ladder that isolates each effect on real
@@ -137,7 +137,8 @@ Fourier transform of a finite nonnegative measure $\mu$, the spectral measure (B
 learning restricted to the stationary class is spectral-measure estimation \citep{wilson2013}.
 Rather than estimate $\mu$ on $\R^d$ jointly, MS-SKM estimates a measure on each coordinate.
 Fix per-coordinate frequencies $\{\omega_{j,k}\}_{k=1}^K$, nonnegative amplitudes $\{a_{j,k}\}$
-and a per-coordinate relevance scale $s_j>0$, and define the feature map with components
+and a per-coordinate automatic-relevance-determination (ARD) scale $s_j>0$
+\citep{neal1996,mackay1996,rw2006}, and define the feature map with components
 \begin{equation}
 \psi(x)_{j,k}=a_{j,k}\big[\cos(2\pi s_j\,\omega_{j,k}\,x_j),\ \sin(2\pi s_j\,\omega_{j,k}\,x_j)\big],
 \qquad j=1,\dots,d,\ k=1,\dots,K.
@@ -495,15 +496,24 @@ Bike-hourly (R$^2$)  & 1 & 0.943          & 0.942          & 0.944 \\
 \end{table}
 
 \paragraph{Interpretability from the learned kernel.} The kernel is learned, so its parameters
-are the explanation, read off with no surrogate or permutation (Figure~\ref{fig:interpret}). The
-ARD relevance $s_j$ is the inverse length scale of feature $j$; with the spectral energy the model
-places on that feature it gives the importance
+are the explanation, read off with no surrogate or permutation (Figure~\ref{fig:interpret}).
+\emph{Relevance.} The scale $s_j$ in \eqref{eq:psi} is the inverse length scale of feature $j$: it
+multiplies $x_j$ inside every $\cos/\sin(2\pi s_j\omega_{j,k}x_j)$, so as $s_j\to0$ those
+coordinates flatten to constants and feature $j$ leaves the kernel. Training therefore drives $s_j$
+small for uninformative features and large for relevant ones, which is automatic relevance
+determination \citep{neal1996,mackay1996}. \emph{Importance.} Relevance alone ignores how much
+spectral energy a feature carries, so we score feature $j$ by the sensitivity of the embedding to
+it. Differentiating \eqref{eq:psi} gives
+$\partial_{x_j}\psi(x)_{j,k}=2\pi s_j\omega_{j,k}a_{j,k}\,[-\sin,\cos](2\pi s_j\omega_{j,k}x_j)$,
+whose squared magnitude averages to $(2\pi)^2 s_j^2\omega_{j,k}^2 a_{j,k}^2$ over $x_j$; summing
+over the $K$ frequencies and the convex bank weights $w_h$ gives the importance
 \begin{equation}
 I_j\ \propto\ s_j^2\sum_{h} w_h\sum_{k} a_{h,j,k}^2\,\omega_{h,j,k}^2,
 \label{eq:ardimp}
 \end{equation}
-the bank-weighted mean-square sensitivity of the embedding to $x_j$, a derivative-based global
-index comparable across features because the inputs are standardized. On California the importance
+the bank-weighted mean-square gradient of the embedding in $x_j$ --- a derivative-based global
+sensitivity measure \citep{sobol2009}, comparable across features because the inputs are
+standardized. On California the importance
 concentrates on the geographic coordinates, whose effect on price is sharp and local; a strong but
 smooth feature such as median income carries high relevance yet low gradient energy. The
 off-diagonal blocks of the encoder metric $M=W^\top W$ (Prop.~\ref{prop:interaction}) expose which
