@@ -12,17 +12,20 @@ Two readings, both from the learned kernel directly:
   large ``s_j`` means the embedding turns quickly with that feature. This is the
   literal ARD reading.
 
-* **Importance** --- the mean-square sensitivity of the embedding to feature
-  ``j``. Differentiating an embedding coordinate ``a\\cos(2\\pi s_j\\omega x_j)``
-  in ``x_j`` gives ``2\\pi s_j\\omega a\\,(\\cdot)``, so the bank-weighted
-  mean-square gradient is
+* **Importance** --- the gradient energy of the embedding in feature ``j``.
+  Differentiating an embedding coordinate ``a*cos(2*pi*s_j*omega*x_j)`` in
+  ``x_j`` gives ``2*pi*s_j*omega*a*(...)``, whose squared norm is *exactly*
+  ``(2*pi*s_j*omega*a)^2`` -- a cosine/sine pair shares one constant gradient
+  norm (``sin^2+cos^2=1``), independent of ``x``, so nothing is averaged or
+  sampled. Summed over frequencies and the convex bank weights,
 
-      I_j  \\propto  s_j^2 \\sum_h w_h \\sum_k a_{h,j,k}^2 \\omega_{h,j,k}^2 ,
+      I_j  =  (2*pi)^2 s_j^2 sum_h w_h sum_k a_{h,j,k}^2 omega_{h,j,k}^2 ,
 
-  a global, derivative-based (Sobol-flavored) importance that combines the ARD
-  scale with the spectral energy the model actually placed on the feature.
+  which is exactly the second moment of feature ``j``'s learned spectral measure
+  (the GP prior's mean-square gradient). It is a closed-form functional of the
+  fitted parameters -- not a surrogate, perturbation or permutation estimate.
   Features are standardized inside the model, so the ``I_j`` are directly
-  comparable across features.
+  comparable; they are returned normalized to sum to 1.
 
 For ``mix=True`` the shared encoder ``W`` mixes features, and the off-diagonal
 blocks of the learned metric ``M = W^T W`` are an inspectable diagnostic of
@@ -86,9 +89,12 @@ class SpectralInterpreter:
 
     # ------------------------------------------------------------ importance
     def feature_importance(self, normalize=True):
-        """ARD feature importance ``I_j`` (mean-square embedding sensitivity).
+        """ARD feature importance ``I_j``, the exact gradient energy of the embedding.
 
-        Returns an array of length ``d``; normalized to sum to 1 by default.
+        ``I_j = (2*pi)^2 s_j^2 sum_h w_h sum_k a^2 omega^2`` -- the second moment of
+        feature ``j``'s learned spectral measure, computed in closed form from the
+        fitted parameters (no surrogate or sampling). Length ``d``; normalized to
+        sum to 1 by default.
         """
         sens = self.relevance_ ** 2 * np.einsum(
             "h,hdk,hdk->d", self._w, self._a ** 2, self._omega ** 2

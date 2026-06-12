@@ -160,7 +160,9 @@ Classification uses one-hot KRR with temperature-scaled `predict_proba`.
 
 The kernel is learned, so its parameters *are* the explanation. `SpectralInterpreter`
 reads feature importance and interactions straight off a fitted `MSSKM` or
-`VariationalMSSKM` — no surrogate, no permutation.
+`VariationalMSSKM`. Every quantity below is a closed-form functional of the fitted
+parameters — computed exactly, with no surrogate model, perturbation, sampling or
+permutation.
 
 ```python
 from skm import MSSKM, SpectralInterpreter
@@ -182,10 +184,12 @@ Two ARD readings come directly from the spectral map:
 - **Relevance** `s_j` — the ARD inverse length scale. `s_j → 0` switches a feature off
   (its embedding coordinate stops turning); a large `s_j` means the embedding turns
   quickly with that feature.
-- **Importance** `I_j ∝ s_j² · Σ_h w_h Σ_k a²_{h,j,k} ω²_{h,j,k}` — the bank-weighted
-  mean-square sensitivity of the embedding to feature `j` (a derivative-based global
-  index). It combines the ARD scale with the spectral energy the model actually placed
-  on the feature; inputs are standardized internally, so the `I_j` are comparable.
+- **Importance** `I_j = (2π)² · s_j² · Σ_h w_h Σ_k a²_{h,j,k} ω²_{h,j,k}` — the gradient
+  energy of the embedding in feature `j`. A cosine/sine pair shares one constant gradient
+  norm (`sin²+cos² = 1`), so this is *exact* and `x`-independent, not an average: it equals
+  the second moment `∫(2πξ)² dμ_j` of the learned spectral measure (the GP prior's
+  mean-square gradient). Inputs are standardized internally, so the `I_j` are comparable;
+  returned normalized to sum to 1.
 
 For `mix=True` the off-diagonal blocks of the learned metric `M = WᵀW` measure
 **metric interaction** between feature pairs (Prop. 2 in the paper); with `mix=False`

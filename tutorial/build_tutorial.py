@@ -191,13 +191,15 @@ plt.tight_layout(); plt.show()
 md(r"""
 ## ARD interpretability: importance and interaction
 
-Because the kernel is *learned*, its parameters are the explanation --- no surrogate, no
-permutation. `SpectralInterpreter` reads them off a fitted model. The **ARD relevance** $s_j$ is
-the inverse length scale of each feature; combined with the spectral energy the model places on it
-we get a normalized **importance** $I_j \propto s_j^2 \sum_h w_h \sum_k a^2_{h,j,k}\,\omega^2_{h,j,k}$,
-the mean-square sensitivity of the embedding to feature $j$. On `make_moons` both features are
-relevant --- neither importance collapses to zero --- though the vertical coordinate carries more
-of the boundary's sharp variation.
+Because the kernel is *learned*, its parameters are the explanation --- computed exactly in closed
+form, with no surrogate, perturbation or permutation. `SpectralInterpreter` reads them off a fitted
+model. The **ARD relevance** $s_j$ is the inverse length scale of each feature; combined with the
+spectral energy the model places on it we get the **importance**
+$I_j = (2\pi)^2 s_j^2 \sum_h w_h \sum_k a^2_{h,j,k}\,\omega^2_{h,j,k}$. A cosine/sine pair shares one
+constant gradient norm ($\sin^2+\cos^2=1$), so $I_j$ is *exact* and independent of $x$ --- it is the
+second moment of the learned spectral measure, not a sampled sensitivity. On `make_moons` both
+features are relevant --- neither importance collapses to zero --- though the vertical coordinate
+carries more of the boundary's sharp variation.
 
 The **interaction** is where the ladder shows itself. The off-diagonal of the encoder metric
 $M = W^\top W$ measures how strongly the model couples a pair of features. Mixing (rung 1) wraps
