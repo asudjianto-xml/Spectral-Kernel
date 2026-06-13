@@ -443,3 +443,20 @@ python tests/test_smoke.py        # rungs 0, A, 1, 2 — regression + classifica
 ```
 
 Runs on CPU; a CUDA-enabled PyTorch build is used automatically when available.
+
+## Citation
+
+If you use this work, please cite the paper
+([SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6927558)):
+
+> Sudjianto, A. and Zhang, A. (2026). *Multi-Scale Spectral Kernel Machines for Tabular Data.* SSRN 6927558.
+
+```bibtex
+@article{sudjianto2026msskm,
+  author  = {Sudjianto, Agus and Zhang, Aijun},
+  title   = {Multi-Scale Spectral Kernel Machines for Tabular Data},
+  year    = {2026},
+  journal = {SSRN Electronic Journal},
+  note    = {Available at SSRN: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6927558}
+}
+```
