@@ -227,6 +227,41 @@ plt.tight_layout(); plt.show()
 """)
 
 md(r"""
+## Functional ANOVA: effect shapes and variance attribution
+
+ARD importance and the metric matrix are *global* numbers. To see the **shape** of each effect and
+how much of the prediction each one accounts for, `fanova` decomposes the fitted model under the
+data distribution into a grand mean, per-feature **main effects** and a pure **pairwise
+interaction**:
+
+$$ f(x) = f_0 + g_1(x_1) + g_2(x_2) + g_{12}(x_1, x_2) + \text{remainder}. $$
+
+The kernel does not factor over coordinates, so this is a numerical decomposition: the components
+are fit to the model's own predictions by penalized backfitting over per-feature bins, and the
+interaction is *purified* to be orthogonal to the two main effects (Hooker's generalized functional
+ANOVA). The fit only uses feature combinations that actually occur, so it never extrapolates off the
+data. The variance bookkeeping is exact and honest --- `total = Σ Var(main) + Var(interaction) +
+covariance + remainder` --- where `covariance` is the dependence between components (tiny here:
+`make_moons`'s two coordinates are nearly independent) and `remainder` is the higher-order, sharply
+curved part of the boundary that an additive-plus-pairwise model cannot reach.
+
+On the moons each crescent sits in a different band of $x_1$ **and** of $x_2$, so the main effects
+carry most of the variance of $P(\text{class }1)$; the genuinely joint piece is the
+$x_1\times x_2$ interaction, and the curved boundary's sharp structure lands in the remainder.
+""")
+
+code(r"""
+res = itp1.fanova(Xtr, n_bins=14)        # decompose the rung-1 model under the training distribution
+print(res.summary())
+
+fig, axes = plt.subplots(1, 3, figsize=(13, 3.6))
+res.plot_main("x1", ax=axes[0])
+res.plot_main("x2", ax=axes[1])
+res.plot_interaction("x1", "x2", ax=axes[2])
+plt.tight_layout(); plt.show()
+""")
+
+md(r"""
 ## Knowing what it does not know: a predictive distribution
 
 Every model above returns a *point* probability. But on a small, noisy problem we also want to
@@ -306,7 +341,8 @@ md(r"""
 - The model stays **inspectable**: per-feature relevance and, in the additive rungs, the exact
   per-feature shape functions. `SpectralInterpreter` reads **ARD importance** and the **metric
   interaction** $W^\top W$ straight off the kernel --- mixing lights up the off-diagonal, and with
-  mixing off it is structurally zero.
+  mixing off it is structurally zero. `fanova` then decomposes the predictor into **main effects
+  and a purified interaction** with an exact, honest variance attribution.
 - The **variational** head turns the same kernel into a **predictive distribution**: a Bernoulli
   SVGP whose uncertainty surface is small over the data and grows in the gap and beyond it ---
   the model knows where it is guessing.

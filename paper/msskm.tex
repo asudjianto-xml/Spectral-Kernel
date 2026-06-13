@@ -16,6 +16,7 @@
 \newcommand{\inner}[2]{\langle #1, #2 \rangle}
 \newcommand{\norm}[1]{\lVert #1 \rVert}
 \newcommand{\E}{\mathbb{E}}
+\DeclareMathOperator{\Var}{Var}
 \DeclareMathOperator{\tr}{tr}
 \DeclareMathOperator{\softmax}{softmax}
 
@@ -111,7 +112,8 @@ same learned kernel by the ELBO of a sparse Gaussian process \citep{titsias2009,
 giving a calibrated Gaussian predictive distribution rather than a point.
 \item \emph{(Interpretability.)} Because the kernel is learned, its parameters are the
 explanation: automatic relevance determination (ARD) gives a per-feature importance and the encoder metric $W^\top W$ gives
-pairwise metric interactions, read directly off the fitted model with no surrogate
+pairwise metric interactions, read directly off the fitted model with no surrogate; a generalized
+functional ANOVA \citep{hooker2007} adds the effect shapes and a variance attribution
 (Sec.~\ref{sec:exp}).
 \item An open-source implementation and an ablation ladder that isolates each effect on real
 tabular data.
@@ -532,6 +534,43 @@ Prop.~\ref{prop:interaction} made visible; with $W$ block-diagonal (rung~B) it i
 ($H{=}4$, $K{=}8$). Left: per-feature importance $I_j$ of \eqref{eq:ardimp}. Right: metric
 interaction $\|M_{jj'}\|_F$ between feature pairs, diagonal removed.}
 \label{fig:interpret}
+\end{figure}
+
+\paragraph{Functional ANOVA of the fitted predictor.} Relevance and importance are closed-form
+functionals of the kernel; to read the \emph{shape} of each effect and attribute prediction
+variance we decompose the fitted predictor itself, under the empirical joint measure of the
+training set, into a grand mean, per-feature main effects and pure pairwise interactions,
+$f(x)=f_0+\sum_j g_j(x_j)+\sum_{j<k}g_{jk}(x_j,x_k)+r(x)$ --- the generalized functional ANOVA for
+dependent inputs \citep{hooker2007}. Because the kernel does not factor over coordinates this
+decomposition is numerical rather than closed form: the components are fit to the model's own
+predictions by penalized backfitting over per-feature quantile bins, and each interaction is
+\emph{purified} so that $\E[g_{jk}\mid x_j]=\E[g_{jk}\mid x_k]=0$, making it orthogonal to its own
+main effects \citep{lengerich2020}. The fit uses only feature combinations that occur in the data,
+so it never queries the model off the data manifold --- the failure mode of the marginal
+(interventional) partial-dependence reading \citep{friedman2001} under correlated features. The
+variance attribution then balances exactly,
+\begin{equation}
+\Var(f)\ =\ \sum_j \Var(g_j)\ +\ \sum_{j<k}\Var(g_{jk})\ +\ \mathrm{cov}\ +\ \mathrm{rem},
+\label{eq:fanova}
+\end{equation}
+where $\mathrm{cov}$ is the between-component dependence (zero when the features are independent)
+and $\mathrm{rem}$ the order-three-and-higher and within-bin variation; both are reported rather
+than absorbed. On California (Figure~\ref{fig:fanova}) the additive main effects of median income
+and the two geographic coordinates carry the bulk of the explained variance, the pairwise
+interactions are an order of magnitude smaller (the largest couple average occupancy to location),
+the strong geographic collinearity surfaces as a large negative covariance ($-0.42$ of the
+variance), and a fifth of the variance is genuinely higher order. This complements the closed-form
+ARD reading: importance ranks features by the kernel's mean-square gradient, while the functional
+ANOVA shows the form those effects take and how feature dependence redistributes them.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\textwidth]{figures/fanova.pdf}
+\caption{Functional-ANOVA decomposition of the fitted MS-SKM on California Housing
+($H{=}4$, $K{=}8$), under the empirical training measure. Left: variance attribution
+\eqref{eq:fanova} --- main effects, pairwise interactions, the between-component covariance and the
+higher-order remainder. Center: the purified main effect of median income. Right: the strongest
+pairwise interaction surface.}
+\label{fig:fanova}
 \end{figure}
 
 \section{Related work}
